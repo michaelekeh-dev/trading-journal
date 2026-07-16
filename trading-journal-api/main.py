@@ -45,4 +45,18 @@ def get_one_trade(trade_id: int):
 def get_all_trades():
     with Session(engine) as session:
         trades = session.exec(select(Trade)).all()
-        return trades   
+        return trades       
+
+@app.put("/trades/{trade_id}")
+def update_trade(trade_id: int, new_data: Trade):
+    with Session(engine) as session:
+        trade = session.get(Trade, trade_id)
+        if trade is None:
+            return {"error": "Couldnt Find Trade ID"}
+        trade.instrument = new_data.instrument
+        trade.direction = new_data.direction
+        trade.entry_price = new_data.entry_price
+        trade.exit_price = new_data.exit_price
+        session.commit()
+        session.refresh(trade)
+        return "Updated Trade!"
