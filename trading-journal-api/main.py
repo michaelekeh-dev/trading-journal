@@ -40,3 +40,9 @@ def get_one_trade(trade_id: int):
         if trade is None:
             return {"error": "Couldnt Find Trade ID"}
         return trade
+    
+@app.get("/trades")
+def get_all_trades():
+    with Session(engine) as session:
+        trades = session.exec(select(Trade)).all()
+        return trades   
