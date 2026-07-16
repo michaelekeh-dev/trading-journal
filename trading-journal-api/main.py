@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from sqlmodel import SQLModel, Field, Session, create_engine, select
 from datetime import datetime
+from fastapi.middleware.cors import CORSMiddleware
 
 class TradeBase(SQLModel):
     instrument: str
@@ -22,7 +23,6 @@ class Trade(TradeBase, table=True):
         else:
             return (self.entry_price - self.exit_price) * self.quantity
     
-
 class TradeCreate(TradeBase):
     pass
 
@@ -31,6 +31,13 @@ engine = create_engine("sqlite:///trades.db")
 SQLModel.metadata.create_all(engine)
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.post("/trades")
 def add_trade(trade: TradeCreate):
@@ -42,9 +49,12 @@ def add_trade(trade: TradeCreate):
         return db_trade
 
 @app.get("/trades/stats")
-def get_stats():
+def get_stats(strategy: str | None = None):
     with Session(engine) as session:
-        trades = session.exec(select(Trade)).all()
+        if strategy is None:
+            trades = session.exec(select(Trade)).all()
+        else:
+            trades = session.exec(select(Trade).where(Trade.strategy == strategy)).all()
         if not trades:
             return {"total_pnl": 0, "win_rate": 0, "trade_count": 0}
         total_pnl = 0
@@ -79,10 +89,13 @@ def get_one_trade(trade_id: int):
         return {"trade": trade, "pnl": trade.calculate_pnl()}
     
 @app.get("/trades")
-def get_all_trades():
+def get_all_trades(strategy: str | None = None):
     with Session(engine) as session:
-        trades = session.exec(select(Trade)).all()
-        return trades       
+        if strategy is None:
+            trades = session.exec(select(Trade)).all()
+        else:
+            trades = session.exec(select(Trade).where(Trade.strategy == strategy)).all()
+        return trades
 
 @app.put("/trades/{trade_id}")
 def update_trade(trade_id: int, new_data: Trade):
