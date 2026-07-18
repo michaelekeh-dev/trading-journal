@@ -11,12 +11,18 @@ function App() {
     notes: "",
     strategy: "",
   });
-
+  const [stats, setStats] = useState({ total_pnl: 0, win_rate: 0, trade_count: 0 });
+  
   function refresh() {
     fetch("http://127.0.0.1:8000/trades")
       .then((res) => res.json())
       .then((data) => setTrades(data));
+
+    fetch("http://127.0.0.1:8000/trades/stats")
+      .then((res) => res.json())
+      .then((data) => setStats(data));
   }
+
 
   useEffect(() => {
     refresh();
@@ -43,10 +49,10 @@ function App() {
       <button onClick={() => setTrades([])}>Clear</button>
 
       <input
-        name="instrument"
-        placeholder="Instrument"
+        name="Positions"
+        placeholder="Positions"
         value={form.instrument}
-        onChange={(e) => setForm({ ...form, instrument: e.target.value })}
+        onChange={(e) => setForm({ ...form, Positions: e.target.value })}
       />
       <input
         name="direction"
@@ -86,10 +92,15 @@ function App() {
       />
       <button onClick={addTrade}>Add trade</button>
       <h1>Trading Journal</h1>
+      <div>
+        <p>Total P&L: ${stats.total_pnl}</p>
+        <p>Win rate: {stats.win_rate.toFixed(1)}%</p>
+        <p>Trades: {stats.trade_count}</p>
+      </div>
       <table>
         <thead>
           <tr>
-            <th>Instrument</th>
+            <th>Positions</th>
             <th>Direction</th>
             <th>Entry</th>
             <th>Exit</th>
@@ -112,5 +123,6 @@ function App() {
       </table>
     </div>
   );
+
 }
 export default App;
