@@ -1,49 +1,76 @@
 import { useState, useEffect } from "react";
 import "./App.css";
 
+const API = "http://127.0.0.1:8000";
+
+const BLANK = {
+  instrument: "",
+  direction: "long",
+  quantity: "",
+  entry_price: "",
+  exit_price: "",
+  strategy: "",
+  notes: "",
+};
+
 function App() {
   const [trades, setTrades] = useState([]);
   const [stats, setStats] = useState({ total_pnl: 0, win_rate: 0, trade_count: 0 });
-  const [form, setForm] = useState({
-    instrument: "",
-    direction: "long",
-    quantity: "",
-    entry_price: "",
-    exit_price: "",
-    strategy: "",
-    notes: "",
-  });
+  const [strategies, setStrategies] = useState([]);
+  const [filter, setFilter] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState(BLANK);
 
   function refresh() {
-    fetch("http://127.0.0.1:8000/trades")
-      .then((res) => res.json())
-      .then((data) => setTrades(data));
-
-    fetch("http://127.0.0.1:8000/trades/stats")
-      .then((res) => res.json())
-      .then((data) => setStats(data));
+    const q = filter ? `?strategy=${encodeURIComponent(filter)}` : "";
+    fetch(`${API}/trades${q}`).then((r) => r.json()).then(setTrades);
+    fetch(`${API}/trades/stats${q}`).then((r) => r.json()).then(setStats);
+    fetch(`${API}/strategies`).then((r) => r.json()).then(setStrategies);
   }
 
   useEffect(() => {
     refresh();
-  }, []);
+  }, [filter]);
 
-  function addTrade() {
-    const trade = {
+  function saveTrade() {
+    const editing = editingId !== null;
+    const body = {
       ...form,
+      quantity: parseFloat(form.quantity),
       entry_price: parseFloat(form.entry_price),
       exit_price: parseFloat(form.exit_price),
-      quantity: parseFloat(form.quantity),
     };
 
-    fetch("http://127.0.0.1:8000/trades", {
-      method: "POST",
+    fetch(editing ? `${API}/trades/${editingId}` : `${API}/trades`, {
+      method: editing ? "PUT" : "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(trade),
+      body: JSON.stringify(body),
     }).then(() => {
+      cancelEdit();
       refresh();
-      setForm({ ...form, instrument: "", quantity: "", entry_price: "", exit_price: "", strategy: "", notes: "" });
     });
+  }
+
+  function startEdit(t) {
+    setEditingId(t.id);
+    setForm({
+      instrument: t.instrument,
+      direction: t.direction,
+      quantity: t.quantity,
+      entry_price: t.entry_price,
+      exit_price: t.exit_price,
+      strategy: t.strategy,
+      notes: t.notes,
+    });
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setForm(BLANK);
+  }
+
+  function deleteTrade(id) {
+    fetch(`${API}/trades/${id}`, { method: "DELETE" }).then(() => refresh());
   }
 
   return (
@@ -74,7 +101,7 @@ function App() {
       </section>
 
       <section className="card">
-        <div className="metric-label">Log a trade</div>
+        <div className="metric-label">{editingId ? "Edit trade" : "Log a trade"}</div>
         <div className="form-grid">
           <input
             placeholder="Instrument"
@@ -114,9 +141,24 @@ function App() {
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
           />
-          <button className="btn" onClick={addTrade}>Log trade</button>
+          <button className="btn" onClick={saveTrade}>
+            {editingId ? "Save changes" : "Log trade"}
+          </button>
+          {editingId && (
+            <button className="btn btn-ghost" onClick={cancelEdit}>Cancel</button>
+          )}
         </div>
       </section>
+
+      <div className="toolbar">
+        <span className="metric-label">Filter by strategy</span>
+        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+          <option value="">All strategies</option>
+          {strategies.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </div>
 
       <table>
         <thead>
@@ -126,14 +168,16 @@ function App() {
             <th className="num">Qty</th>
             <th className="num">Entry</th>
             <th className="num">Exit</th>
+            <th className="num">P&L</th>
             <th>Strategy</th>
             <th>Notes</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           {trades.length === 0 && (
             <tr>
-              <td className="empty" colSpan="7">No trades logged yet. Add your first above.</td>
+              <td className="empty" colSpan="9">No trades match. Log one above.</td>
             </tr>
           )}
           {trades.map((t) => (
@@ -143,8 +187,15 @@ function App() {
               <td className="num">{t.quantity}</td>
               <td className="num">{t.entry_price}</td>
               <td className="num">{t.exit_price}</td>
+              <td className={t.pnl >= 0 ? "num profit" : "num loss"}>
+                {t.pnl >= 0 ? "+" : ""}{t.pnl.toFixed(2)}
+              </td>
               <td>{t.strategy}</td>
               <td>{t.notes}</td>
+              <td className="row-actions">
+                <button className="link-btn" onClick={() => startEdit(t)}>Edit</button>
+                <button className="link-btn danger" onClick={() => deleteTrade(t.id)}>Delete</button>
+              </td>
             </tr>
           ))}
         </tbody>
