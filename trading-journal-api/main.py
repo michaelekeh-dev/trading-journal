@@ -133,3 +133,10 @@ def delete_trade(trade_id: int):
         session.delete(trade)
         session.commit()
         return {"deleted": trade_id}
+
+@app.get("/")
+def root():
+    return {"status": "ok", "docs": "/docs"}
+
+from seed import seed
+seed()

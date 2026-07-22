@@ -31,12 +31,16 @@ trades = [
           notes="Bought into earnings. Gambling, not trading. Stop doing this."),
 ]
 
-with Session(engine) as session:
-    existing = session.exec(select(Trade)).first()
-    if existing:
-        print("Trades already exist, skipping seed")
-    else:
+def seed():
+    with Session(engine) as session:
+        existing = session.exec(select(Trade)).first()
+        if existing:
+            print("Trades already exist, skipping seed")
+            return
         for trade in trades:
             session.add(trade)
         session.commit()
         print(f"Added {len(trades)} trades")
+
+if __name__ == "__main__":
+    seed()
