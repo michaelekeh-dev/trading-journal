@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import "./App.css";
 
-const API = "http://127.0.0.1:8000";
+const API = import.meta.env.VITE_API_URL;
 
 const BLANK = {
   instrument: "",
@@ -13,6 +13,7 @@ const BLANK = {
   notes: "",
 };
 
+
 function App() {
   const [trades, setTrades] = useState([]);
   const [stats, setStats] = useState({ total_pnl: 0, win_rate: 0, trade_count: 0 });
@@ -20,14 +21,17 @@ function App() {
   const [filter, setFilter] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(BLANK);
+  const [loading, setLoading] = useState(true);
 
   function refresh() {
+    setLoading(true);
     const q = filter ? `?strategy=${encodeURIComponent(filter)}` : "";
-    fetch(`${API}/trades${q}`).then((r) => r.json()).then(setTrades);
-    fetch(`${API}/trades/stats${q}`).then((r) => r.json()).then(setStats);
-    fetch(`${API}/strategies`).then((r) => r.json()).then(setStrategies);
+    Promise.all([
+      fetch(`${API}/trades${q}`).then((r) => r.json()).then(setTrades),
+      fetch(`${API}/trades/stats${q}`).then((r) => r.json()).then(setStats),
+      fetch(`${API}/strategies`).then((r) => r.json()).then(setStrategies),
+    ]).finally(() => setLoading(false));
   }
-
   useEffect(() => {
     refresh();
   }, [filter]);
@@ -175,7 +179,14 @@ function App() {
           </tr>
         </thead>
         <tbody>
-          {trades.length === 0 && (
+          {loading && (
+            <tr>
+              <td className="empty" colSpan="9">
+                Loading. The API sleeps on free hosting, so a cold start takes up to 50 seconds.
+              </td>
+            </tr>
+          )}
+          {!loading && trades.length === 0 && (
             <tr>
               <td className="empty" colSpan="9">No trades match. Log one above.</td>
             </tr>
