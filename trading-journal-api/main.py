@@ -1,11 +1,17 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException
 from sqlmodel import SQLModel, Field, Session, create_engine, select
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
+from enum import Enum
+
+
+class Direction(str, Enum):
+    LONG = "long"
+    SHORT = "short"
 
 class TradeBase(SQLModel):
     instrument: str
-    direction: str
+    direction: Direction
     entry_price: float
     exit_price: float
     quantity: float
@@ -17,9 +23,8 @@ class Trade(TradeBase, table=True):
     created_at: datetime = Field(default_factory=datetime.now)
 
     def calculate_pnl(self):
-        if self.direction == "long":
+        if self.direction == Direction.LONG:
             return (self.exit_price - self.entry_price) * self.quantity
-            
         else:
             return (self.entry_price - self.exit_price) * self.quantity
     
