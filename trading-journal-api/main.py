@@ -3,7 +3,7 @@ from sqlmodel import SQLModel, Field, Session, create_engine, select
 from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 from enum import Enum
-
+import os
 
 class Direction(str, Enum):
     LONG = "long"
@@ -39,7 +39,7 @@ class TradeRead(TradeBase):
 def to_read(trade: Trade) -> TradeRead:
     return TradeRead(**trade.model_dump(), pnl=trade.calculate_pnl())
 
-engine = create_engine("sqlite:///trades.db")
+engine = create_engine(os.environ.get("DATABASE_URL", "sqlite:///trades.db"))
 
 SQLModel.metadata.create_all(engine)
 

@@ -1,4 +1,4 @@
-from sqlmodel import Session
+from sqlmodel import Session,select
 from main import engine, Trade, Direction
 
 trades = [
@@ -32,8 +32,11 @@ trades = [
 ]
 
 with Session(engine) as session:
-    for trade in trades:
-        session.add(trade)
-    session.commit()
-
-print(f"Added {len(trades)} trades")
+    existing = session.exec(select(Trade)).first()
+    if existing:
+        print("Trades already exist, skipping seed")
+    else:
+        for trade in trades:
+            session.add(trade)
+        session.commit()
+        print(f"Added {len(trades)} trades")
